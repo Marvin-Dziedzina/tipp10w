@@ -20,6 +20,7 @@ fn main() {
     println!("Input `h` for help or `e` for exit.");
 
     loop {
+        println!("Actions: `h`, `p`, `a`, `d`, `e`");
         let action = Action::from(&get_input(">>> ", ""));
 
         match action {
