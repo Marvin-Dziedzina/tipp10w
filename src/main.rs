@@ -1,5 +1,7 @@
 use std::{
     io::{stdin, stdout, Write},
+    path::PathBuf,
+    str::FromStr,
     thread, time,
 };
 
@@ -15,7 +17,13 @@ use lesson::Lesson;
 use lesson_savedata::LessonSaveData;
 
 fn main() {
-    let conn = Connection::open("portable/tipp10v2.db").expect("Could not connect to database!");
+    let db_path_string = get_input("Path to Tipp10: ", "");
+    let mut db_path =
+        PathBuf::from_str(&db_path_string).expect("Tipp10 Path needs to be a valid path!");
+    db_path.push("portable");
+    db_path.push("tipp10v2.db");
+
+    let conn = Connection::open(db_path).expect("Could not connect to database!");
 
     println!("Input `h` for help or `e` for exit.");
 
