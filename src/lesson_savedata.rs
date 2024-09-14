@@ -35,7 +35,7 @@ impl Display for LessonSaveData {
             f,
             "[ ID: {} | Name: {} | Timestamp: {} | Duration: {} | Strokes: {} | Errors: {} ]",
             format!("{:<width$}", self.id, width = 4),
-            format!("{:<width$}", self.name, width = 27),
+            format!("{:<width$}", self.name, width = 29),
             self.timestamp,
             format!("{:<width$}", self.duration, width = 5),
             format!("{:<width$}", self.strokes, width = 6),
