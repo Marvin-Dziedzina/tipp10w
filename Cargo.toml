@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.38"
+crossterm = "0.28.1"
+ratatui = "0.28.1"
 rusqlite = { version = "0.32.1", features = ["bundled"] }
 
 # Enable a large amount of optimization in the dev profile for dependencies.
