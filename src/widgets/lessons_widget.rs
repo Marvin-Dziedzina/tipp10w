@@ -1,7 +1,7 @@
 use log::error;
 
 use ratatui::{
-    crossterm::event::Event,
+    crossterm::event::{Event, KeyCode, KeyEventKind},
     layout::Rect,
     text::Line,
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
@@ -13,7 +13,7 @@ use crate::tipp10;
 
 pub struct LessonsWidget {}
 impl LessonsWidget {
-    pub fn draw(f: &mut Frame, area: Rect, conn: &Connection) {
+    pub fn render(f: &mut Frame, area: Rect, conn: &Connection) {
         let lessons = match tipp10::get_lessons(conn) {
             Ok(lessons) => lessons,
             Err(e) => {
@@ -35,9 +35,16 @@ impl LessonsWidget {
         f.render_widget(paragraph, area);
     }
 
-    pub fn handle_events(event: &Event) {
-        if let Event::Key(key_event) = event {
-            todo!("LessonsWidget::handle_events")
+    pub fn handle_events(event: Event) {
+        match event {
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                match key_event.code {
+                    KeyCode::PageUp => {}
+                    KeyCode::PageDown => {}
+                    _ => {}
+                }
+            }
+            _ => {}
         }
     }
 }

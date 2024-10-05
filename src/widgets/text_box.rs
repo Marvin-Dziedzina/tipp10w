@@ -11,6 +11,7 @@ use crate::tipp10w::EventResult;
 
 #[derive(Debug)]
 pub struct TextBox {
+    is_selected: bool,
     title: String,
     /// Points to the char the cursor is at. Insertion will happen before the pointer.
     ptr: usize,
@@ -18,8 +19,9 @@ pub struct TextBox {
 }
 
 impl TextBox {
-    pub fn new(title: &str) -> Self {
+    pub fn new(title: &str, is_selected: bool) -> Self {
         Self {
+            is_selected: is_selected,
             title: title.to_string(),
             ptr: 0,
             buf: String::new(),
@@ -28,6 +30,7 @@ impl TextBox {
 
     pub fn with_preset(title: &str, preset: &str) -> Self {
         Self {
+            is_selected: false,
             title: title.to_string(),
             ptr: 0,
             buf: preset.to_string(),
@@ -44,35 +47,44 @@ impl TextBox {
         let mut text_buf = self.buf.clone();
         text_buf.push(' ');
 
-        let max_line_length = block.inner(area).width as usize;
-        let chars_to_truncate = self.ptr as isize - max_line_length as isize + 3;
-        if self.ptr >= max_line_length - 3 {
-            text_buf = text_buf.chars().skip(chars_to_truncate as usize).collect();
-        };
-
-        let ptr = if chars_to_truncate > 0 {
-            max_line_length - 3
-        } else {
-            self.ptr
-        };
-
-        let mut styled_text = vec![];
-        for (i, c) in text_buf.chars().enumerate() {
-            // Change the color of the character at the cursor position
-            let styled_char = if i == ptr {
-                Span::styled(
-                    c.to_string(),
-                    Style::default().fg(Color::Black).bg(Color::White),
-                )
-            } else {
-                Span::styled(
-                    c.to_string(),
-                    Style::default().fg(Color::White).bg(Color::Black),
-                )
+        let styled_text = if self.is_selected {
+            let max_line_length = block.inner(area).width as usize;
+            let chars_to_truncate = self.ptr as isize - max_line_length as isize + 3;
+            if self.ptr >= max_line_length - 3 {
+                text_buf = text_buf.chars().skip(chars_to_truncate as usize).collect();
             };
 
-            styled_text.push(styled_char);
-        }
+            let ptr = if chars_to_truncate > 0 {
+                max_line_length - 3
+            } else {
+                self.ptr
+            };
+
+            let mut styled_text = vec![];
+            for (i, c) in text_buf.chars().enumerate() {
+                // Change the color of the character at the cursor position
+                let styled_char = if i == ptr {
+                    Span::styled(
+                        c.to_string(),
+                        Style::default().fg(Color::Black).bg(Color::White),
+                    )
+                } else {
+                    Span::styled(
+                        c.to_string(),
+                        Style::default().fg(Color::White).bg(Color::Black),
+                    )
+                };
+
+                styled_text.push(styled_char);
+            }
+
+            styled_text
+        } else {
+            let mut styled_text = Vec::new();
+            styled_text.push(Span::from(text_buf).fg(Color::White).bg(Color::Black));
+
+            styled_text
+        };
 
         let line = Line::from(styled_text);
         let paragraph = Paragraph::new(line).block(block);
@@ -81,6 +93,10 @@ impl TextBox {
     }
 
     pub fn handle_events(&mut self, event: &Event) -> io::Result<EventResult> {
+        if !self.is_selected {
+            return Ok(EventResult::None);
+        };
+
         match event {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 match key_event.code {
@@ -111,6 +127,7 @@ impl TextBox {
                             self.ptr += 1;
                         };
                     }
+
                     KeyCode::Char(c) => {
                         self.buf.insert(self.ptr, c);
                         self.ptr += 1;
@@ -141,8 +158,37 @@ impl TextBox {
         self.title = title.to_string();
     }
 
+    pub fn set_buf(&mut self, buf: &str) {
+        self.buf = buf.to_string();
+    }
+
+    pub fn set_ptr(&mut self, ptr: usize) -> io::Result<()> {
+        if ptr > self.buf.chars().count() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Pointer out of bounds!",
+            ));
+        };
+
+        self.ptr = ptr;
+
+        Ok(())
+    }
+
     pub fn reset(&mut self) {
         self.ptr = 0;
         self.buf.clear();
+    }
+
+    pub fn select(&mut self) {
+        self.is_selected = true;
+    }
+
+    pub fn deselect(&mut self) {
+        self.is_selected = false;
+    }
+
+    pub fn toggle(&mut self) {
+        self.is_selected = !self.is_selected;
     }
 }

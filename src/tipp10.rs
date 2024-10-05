@@ -59,12 +59,13 @@ pub fn append_lesson(
     strokes: u32,
     errors: u32,
     timelen: u32,
+    timestamp: u64,
 ) -> Result<(), rusqlite::Error> {
     let lesson = Lesson::from_lesson_id(lesson_id);
 
     match conn.execute(
         "INSERT INTO user_lesson_list (user_lesson_lesson, user_lesson_timelen, user_lesson_tokenlen, user_lesson_strokesnum, user_lesson_errornum, user_lesson_timestamp, user_lesson_type, user_lesson_name) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![lesson.get_user_lesson(), timelen, strokes, strokes, errors, get_timestamp(), 0, lesson.get_lesson_name()],
+        params![lesson.get_user_lesson(), timelen, strokes, strokes, errors, timestamp, 0, lesson.get_lesson_name()],
     ) {
         Ok(_) => (),
         Err(e) => {
@@ -90,7 +91,7 @@ pub fn delete_lesson(conn: &Connection, id: u32) -> Result<(), DeleteError> {
         }
     };
 
-    info!("Last lesson deletetion completed! Lesson ID: {}", id);
+    info!("Lesson deletetion completed! Lesson ID: {}", id);
     Ok(())
 }
 

@@ -40,7 +40,7 @@ impl LessonSaveData {
             Span::from(" | Name: "),
             Span::from(format!("{:<29}", self.name)).fg(Color::Yellow),
             Span::from(" | Timestamp: "),
-            Span::from(self.timestamp.to_string()).fg(Color::Yellow),
+            Span::from(format!("{:<14}", self.timestamp.to_string())).fg(Color::Yellow),
             Span::from(" | Duration: "),
             Span::from(format!("{:<4}", self.duration)).fg(Color::Yellow),
             Span::from(" | Strokes: "),
