@@ -57,9 +57,9 @@ impl Tipp10W {
                     let status_bar = Layout::default()
                         .direction(Direction::Horizontal)
                         .constraints([
-                            Constraint::Fill(1),
+                            Constraint::Fill(4),
                             Constraint::Length(1),
-                            Constraint::Fill(1),
+                            Constraint::Fill(2),
                         ])
                         .split(chunks_vertical[1]);
 
@@ -73,7 +73,9 @@ impl Tipp10W {
 
                     // Create the help line
                     let help = Line::from_iter([
-                        Span::from(" Up").fg(Color::Yellow),
+                        Span::from("Exit: "),
+                        Span::from("Esc").fg(Color::Yellow),
+                        Span::from(" | Up").fg(Color::Yellow),
                         Span::from(" | "),
                         Span::from("Down").fg(Color::Yellow),
                         Span::from(" | "),
@@ -84,7 +86,9 @@ impl Tipp10W {
                         Span::from("Del").fg(Color::Yellow),
                         Span::from(": Delete | "),
                         Span::from("u").fg(Color::Yellow),
-                        Span::from(": update "),
+                        Span::from(": update | "),
+                        Span::from("Date: "),
+                        Span::from("YYYYMMDDHHmmss").fg(Color::Yellow),
                     ])
                     .alignment(Alignment::Center);
 
