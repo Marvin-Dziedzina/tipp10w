@@ -47,7 +47,7 @@ fn init_logger() {
 fn main() -> io::Result<()> {
     let args = env::args().collect::<Vec<String>>();
     if !args.is_empty() {
-        for (_, a) in args.iter().enumerate() {
+        for a in args.iter() {
             match a.as_str() {
                 "-d" | "--debug" => {
                     init_logger();
