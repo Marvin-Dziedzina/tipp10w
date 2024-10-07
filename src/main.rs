@@ -33,7 +33,7 @@ fn disable_bracketed_paste() {
 fn init_logger() {
     use log::warn;
 
-    let log_file = File::create("log").unwrap();
+    let log_file = File::create("debug.log").unwrap();
     match Builder::new()
         .format(|buf, record| writeln!(buf, "{}: {}", record.level(), record.args()))
         .target(env_logger::Target::Pipe(Box::new(log_file)))
