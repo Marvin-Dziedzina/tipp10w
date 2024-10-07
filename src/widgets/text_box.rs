@@ -4,165 +4,154 @@ use ratatui::crossterm::event::{Event, KeyCode, KeyEventKind};
 use ratatui::prelude::*;
 use ratatui::style::{Color, Style};
 use ratatui::text::Span;
-use ratatui::widgets::block::Title;
-use ratatui::widgets::{Block, BorderType, Borders, Paragraph};
+use ratatui::widgets::Paragraph;
 
-use crate::tipp10w::EventResult;
+use crate::tipp10w::{EventResult, ResultError};
 
+/// A text box widget that allows the user to input text.
 #[derive(Debug)]
 pub struct TextBox {
-    is_selected: bool,
-    title: String,
     /// Points to the char the cursor is at. Insertion will happen before the pointer.
     ptr: usize,
     buf: String,
+    max_len: Option<usize>,
 }
 
 impl TextBox {
-    pub fn new(title: &str, is_selected: bool) -> Self {
+    /// Creates a new instance of TextBox.
+    pub fn new(max_len: Option<usize>) -> Self {
         Self {
-            is_selected: is_selected,
-            title: title.to_string(),
             ptr: 0,
             buf: String::new(),
+            max_len,
         }
     }
 
-    pub fn with_preset(title: &str, preset: &str) -> Self {
+    /// Creates a new instance of TextBox with a preset value.
+    pub fn with_preset(preset: &str, max_len: Option<usize>) -> Self {
         Self {
-            is_selected: false,
-            title: title.to_string(),
             ptr: 0,
             buf: preset.to_string(),
+            max_len,
         }
     }
 
-    pub fn render(&self, f: &mut Frame, area: Rect) {
-        let title = Title::from(self.title.as_str()).alignment(Alignment::Left);
-        let block = Block::new()
-            .border_type(BorderType::Thick)
-            .title(title)
-            .borders(Borders::ALL);
+    pub fn draw(&self) -> Paragraph<'_> {
+        let mut buf = self.buf.clone();
+        // Add space to end so cursor can be at the end of the buffer
+        buf.push(' ');
 
-        let mut text_buf = self.buf.clone();
-        text_buf.push(' ');
-
-        let styled_text = if self.is_selected {
-            let max_line_length = block.inner(area).width as usize;
-            let chars_to_truncate = self.ptr as isize - max_line_length as isize + 3;
-            if self.ptr >= max_line_length - 3 {
-                text_buf = text_buf.chars().skip(chars_to_truncate as usize).collect();
-            };
-
-            let ptr = if chars_to_truncate > 0 {
-                max_line_length - 3
+        // Create spans for each character in the buffer
+        let mut spans: Vec<Span> = Vec::with_capacity(buf.chars().count());
+        for (i, c) in buf.chars().enumerate() {
+            if i == self.ptr {
+                spans.push(
+                    Span::from(c.to_string())
+                        .style(Style::default())
+                        .fg(Color::Black)
+                        .bg(Color::White),
+                );
             } else {
-                self.ptr
+                spans.push(Span::from(c.to_string()).style(Style::default()));
             };
+        }
 
-            let mut styled_text = vec![];
-            for (i, c) in text_buf.chars().enumerate() {
-                // Change the color of the character at the cursor position
-                let styled_char = if i == ptr {
-                    Span::styled(
-                        c.to_string(),
-                        Style::default().fg(Color::Black).bg(Color::White),
-                    )
-                } else {
-                    Span::styled(
-                        c.to_string(),
-                        Style::default().fg(Color::White).bg(Color::Black),
-                    )
-                };
-
-                styled_text.push(styled_char);
-            }
-
-            styled_text
-        } else {
-            let mut styled_text = Vec::new();
-            styled_text.push(Span::from(text_buf).fg(Color::White).bg(Color::Black));
-
-            styled_text
-        };
-
-        let line = Line::from(styled_text);
-        let paragraph = Paragraph::new(line).block(block);
-
-        f.render_widget(paragraph, area);
+        Paragraph::new(Line::from_iter(spans))
     }
 
     pub fn handle_events(&mut self, event: &Event) -> io::Result<EventResult> {
-        if !self.is_selected {
-            return Ok(EventResult::None);
-        };
-
-        match event {
+        let event_result: EventResult = match event {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 match key_event.code {
-                    KeyCode::Esc => {
-                        return Ok(EventResult::Exit);
+                    KeyCode::Left => {
+                        // Move the pointer to the left if it is not at the beginning
+                        if self.ptr > 0 {
+                            self.ptr -= 1;
+                        };
+
+                        EventResult::None(ResultError::None)
                     }
-                    KeyCode::Enter => {
-                        return Ok(EventResult::Submit);
+                    KeyCode::Right => {
+                        // Move the pointer to the right if it is not at the end
+                        if self.ptr < self.buf.chars().count() {
+                            self.ptr += 1;
+                        };
+
+                        EventResult::None(ResultError::None)
                     }
+                    KeyCode::Enter => EventResult::Submit, // Send a signal that the user has finished input
                     KeyCode::Backspace => {
-                        if self.ptr != 0 {
+                        // Remove the character before the pointer if it is not at the beginning
+                        if self.ptr > 0 {
                             self.buf.remove(self.ptr - 1);
                             self.ptr -= 1;
                         };
+
+                        EventResult::None(ResultError::None)
                     }
                     KeyCode::Delete => {
-                        if self.ptr != self.buf.chars().count() {
+                        // Remove the character after the pointer if it is not at the end
+                        if self.ptr < self.buf.chars().count() {
                             self.buf.remove(self.ptr);
                         };
-                    }
-                    KeyCode::Left => {
-                        if self.ptr != 0 {
-                            self.ptr -= 1;
-                        };
-                    }
-                    KeyCode::Right => {
-                        if self.ptr != self.buf.chars().count() {
-                            self.ptr += 1;
-                        };
-                    }
 
+                        EventResult::None(ResultError::None)
+                    }
                     KeyCode::Char(c) => {
+                        // Check for max length
+                        if let Some(max_len) = self.max_len {
+                            if self.buf.chars().count() >= max_len {
+                                return Ok(EventResult::None(ResultError::MaxLenReached));
+                            };
+                        };
+
+                        // Insert the character at the pointer
                         self.buf.insert(self.ptr, c);
                         self.ptr += 1;
+
+                        EventResult::None(ResultError::None)
                     }
-                    _ => {}
-                };
+                    _ => EventResult::None(ResultError::None),
+                }
             }
-            _ => {}
+            Event::Paste(pasted) => {
+                // Check for max length
+                if let Some(max_len) = self.max_len {
+                    if self.buf.chars().count() + pasted.chars().count() > max_len {
+                        return Ok(EventResult::None(ResultError::MaxLenReached));
+                    };
+                };
+
+                // Insert the pasted text at the pointer
+                self.buf.insert_str(self.ptr, pasted);
+                self.ptr += pasted.chars().count();
+
+                EventResult::None(ResultError::None)
+            }
+            _ => EventResult::None(ResultError::None),
         };
 
-        if let Event::Paste(pasted) = event {
-            self.buf.insert_str(self.ptr, pasted.as_str());
-            self.ptr += pasted.chars().count();
-        };
-
-        Ok(EventResult::None)
+        Ok(event_result)
     }
 
-    pub fn get_buffer(self) -> String {
-        self.buf
+    /// Get the buffer of the text box.
+    pub fn get_buffer(&self) -> String {
+        self.buf.clone()
     }
 
+    /// Get the buffer of the text box as a reference.
     pub fn get_buffer_ref(&self) -> &str {
         self.buf.as_str()
     }
 
-    pub fn set_title(&mut self, title: &str) {
-        self.title = title.to_string();
-    }
-
+    /// Set the buffer of the text box.
     pub fn set_buf(&mut self, buf: &str) {
         self.buf = buf.to_string();
     }
 
+    /// Set the pointer of the text box.
     pub fn set_ptr(&mut self, ptr: usize) -> io::Result<()> {
+        // Check if the pointer is out of bounds
         if ptr > self.buf.chars().count() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -175,20 +164,14 @@ impl TextBox {
         Ok(())
     }
 
+    /// Set the max length of the text box.
+    pub fn set_max_len(&mut self, max_len: Option<usize>) {
+        self.max_len = max_len;
+    }
+
+    /// Reset the text box.
     pub fn reset(&mut self) {
         self.ptr = 0;
         self.buf.clear();
-    }
-
-    pub fn select(&mut self) {
-        self.is_selected = true;
-    }
-
-    pub fn deselect(&mut self) {
-        self.is_selected = false;
-    }
-
-    pub fn toggle(&mut self) {
-        self.is_selected = !self.is_selected;
     }
 }

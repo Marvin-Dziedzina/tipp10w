@@ -1,84 +1,113 @@
-use std::{io, path::PathBuf};
+use std::io;
 
-use log::error;
-use ratatui::crossterm::event;
+use ratatui::{
+    crossterm::event::{self, Event, KeyCode, KeyEventKind},
+    layout::Rect,
+    prelude::CrosstermBackend,
+    Terminal,
+};
 use rusqlite::Connection;
 
 use crate::{
-    state::State,
-    tipp10w::{EventResult, Tipp10W}, widgets::LessonsWidget,
+    state::{State, SubState},
+    tipp10w::{EventResult, ResultError, Tipp10W},
 };
 
 impl Tipp10W {
-    pub fn handle_events(&mut self) -> io::Result<EventResult> {
+    pub fn handle_events(
+        &mut self,
+        f: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    ) -> io::Result<EventResult> {
+        // Read the next event from the terminal
         let event = event::read()?;
+        match event {
+            Event::Resize(width, height) => {
+                // Update the terminal size
+                f.resize(Rect::new(0, 0, width, height))?;
+            }
+            _ => (),
+        }
+
         let result: EventResult = match &mut self.app_state.state {
             State::Setup => {
-                self.app_state.text_box.select();
-                let event_result = self.app_state.text_box.handle_events(&event)?;
-                if event_result == EventResult::Submit {
-                    let mut path = PathBuf::from(self.app_state.text_box.get_buffer_ref());
-                    path.extend(["portable", "tipp10v2.db"]);
-
-                    self.conn = Some(match Connection::open(path) {
-                        Ok(conn) => conn,
-                        Err(e) => {
-                            error!("Could not open database connection!");
-                            panic!("Could not open database connection: {}", e);
+                match event {
+                    Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                        match key_event.code {
+                            KeyCode::Esc => return Ok(EventResult::Exit),
+                            _ => (),
                         }
-                    });
-                    self.app_state.state = State::Menu;
-                    self.app_state.text_box.reset();
-                    self.app_state.text_box.set_title("Value");
-                    self.app_state.text_box.deselect();
+                    }
+                    _ => (),
                 };
 
-                event_result
-            }
-            State::Menu => {
-                if self.conn.is_some() {
-                    let event_result = self.app_state.action_selection.handle_events(&event)?;
+                let event_result = self.app_state.text_box.handle_events(&event)?;
+                match event_result {
+                    EventResult::Submit => {
+                        // Change the application state to Menu with no substate
+                        self.app_state.state = State::Menu(SubState::None);
 
-                    match event_result {
-                        EventResult::SubmitState(state) => {
-                            self.app_state.state = state;
-                            self.app_state.text_box.select();
-                            LessonsWidget::h
+                        // Open a connection to the database using the path from the TextBox buffer
+                        self.conn = Some(
+                            Connection::open(Tipp10W::get_path_to_db(
+                                self.app_state.text_box.get_buffer_ref(),
+                            ))
+                            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?,
+                        );
 
-                            EventResult::None
-                        }
-                        EventResult::Exit => return Ok(EventResult::Exit),
-                        _ => EventResult::None,
+                        // If the connection is successfully established, update lessons and move pointer to the last lesson
+                        if let Some(conn) = &self.conn {
+                            self.app_state
+                                .lessons_widget
+                                .update_lessons_and_move_ptr_to_last(conn);
+
+                            self.app_state.text_box.reset();
+                        };
+
+                        EventResult::None(ResultError::None)
                     }
-                } else {
-                    self.app_state.state = State::Setup;
-                    EventResult::None
+                    _ => event_result, // Return the original event result for other cases
                 }
             }
-            State::Append => {
+            State::Menu(sub_state) => {
                 if let Some(conn) = &self.conn {
-                    let event_result = self.app_state.parameter_widget.handle_events(
+                    // Handle events for the LessonsWidget
+                    match self.app_state.lessons_widget.handle_events(
+                        event,
+                        sub_state,
                         conn,
                         &mut self.app_state.text_box,
-                        &event,
-                    )?;
-                    self.app_state.text_box.handle_events(&event)?;
-
-                    match event_result {
-                        EventResult::SubmitState(state) => {
+                    ) {
+                        EventResult::SetState(state) => {
+                            // Change the application state
                             self.app_state.state = state;
-                            EventResult::None
+                            EventResult::None(ResultError::None)
                         }
-                        EventResult::Exit => EventResult::Exit,
-                        _ => EventResult::None,
+                        EventResult::SetSubState(sub_state) => {
+                            // Change the substate of the Menu state
+                            self.app_state.state = State::Menu(sub_state);
+                            EventResult::None(ResultError::None)
+                        }
+                        EventResult::None(result_error) => match result_error {
+                            ResultError::None => {
+                                // Clear any existing error message
+                                self.app_state.error = String::new();
+                                EventResult::None(ResultError::None)
+                            }
+                            result_error => {
+                                // Set the error message and return the result error
+                                let e = result_error.to_string();
+                                self.app_state.error = e;
+
+                                EventResult::None(result_error)
+                            }
+                        },
+                        event_result => event_result, // Return the original event result for other cases
                     }
                 } else {
-                    self.app_state.state = State::Setup;
-                    EventResult::None
+                    // If the connection is None, return to the Setup state
+                    self.conn = None;
+                    EventResult::SetState(State::Setup)
                 }
-            }
-            State::Delete => {
-                todo!("Delete state not implemented yet!")
             }
         };
 
