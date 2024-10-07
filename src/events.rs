@@ -1,5 +1,6 @@
 use std::io;
 
+use log::warn;
 use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
     layout::Rect,
@@ -43,16 +44,25 @@ impl Tipp10W {
                 let event_result = self.app_state.text_box.handle_events(&event)?;
                 match event_result {
                     EventResult::Submit => {
-                        // Change the application state to Menu with no substate
-                        self.app_state.state = State::Menu(SubState::None);
-
                         // Open a connection to the database using the path from the TextBox buffer
                         self.conn = Some(
-                            Connection::open(Tipp10W::get_path_to_db(
+                            match Connection::open(Tipp10W::get_path_to_db(
                                 self.app_state.text_box.get_buffer_ref(),
-                            ))
-                            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?,
+                            )) {
+                                Ok(conn) => conn,
+                                Err(_) => {
+                                    // Return the result error
+                                    self.app_state.text_box.reset();
+
+                                    warn!("Failed to open connection to database!");
+
+                                    return Ok(EventResult::None(ResultError::SQLite));
+                                }
+                            },
                         );
+
+                        // Change the application state to Menu with no substate
+                        self.app_state.state = State::Menu(SubState::None);
 
                         // If the connection is successfully established, update lessons and move pointer to the last lesson
                         if let Some(conn) = &self.conn {

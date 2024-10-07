@@ -9,8 +9,6 @@ pub use lesson_selection::LessonSelection;
 use log::{error, info, warn};
 use rusqlite::{params, Connection, OptionalExtension};
 
-use crate::tipp10w::ResultError;
-
 /// Get all saved lessons.
 pub fn get_lessons(conn: &Connection) -> Result<Vec<Lesson>, rusqlite::Error> {
     let mut stmt = match conn

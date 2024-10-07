@@ -97,6 +97,10 @@ impl LessonsWidget {
                         EventResult::None(ResultError::None)
                     }
                     KeyCode::Enter => {
+                        if self.lessons.is_empty() {
+                            return EventResult::None(ResultError::NoLessons);
+                        };
+
                         EventResult::SetSubState(SubState::Edit(self.lessons[self.ptr].lesson.id))
                     }
                     KeyCode::Delete => {

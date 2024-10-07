@@ -226,6 +226,7 @@ impl LessonWidget {
 
                             // Move the pointer to the right if it is not at the end
                             self.ptr += 1;
+                            self.set_max_lenght(text_box);
                         };
 
                         EventResult::None(ResultError::None)
@@ -235,6 +236,7 @@ impl LessonWidget {
                         if self.ptr > 0 {
                             self.ptr -= 1;
                         };
+                        self.set_max_lenght(text_box);
 
                         text_box.reset();
 
@@ -248,5 +250,26 @@ impl LessonWidget {
             }
             _ => EventResult::None(ResultError::None),
         }
+    }
+
+    fn set_max_lenght(&self, text_box: &mut TextBox) {
+        match self.ptr {
+            0 => {
+                text_box.set_max_len(Some(2));
+            }
+            1 => {
+                text_box.set_max_len(Some(14));
+            }
+            2 => {
+                text_box.set_max_len(Some(4));
+            }
+            3 => {
+                text_box.set_max_len(Some(6));
+            }
+            4 => {
+                text_box.set_max_len(Some(6));
+            }
+            _ => (),
+        };
     }
 }
