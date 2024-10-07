@@ -156,7 +156,6 @@ impl LessonsWidget {
                     _ => EventResult::None(ResultError::None),
                 },
                 SubState::Edit(id) => match key_event.code {
-                    KeyCode::Esc => EventResult::SetSubState(SubState::None), // Return to the None substate
                     _ => {
                         // Handle events for the lesson being edited
                         for lesson in &mut self.lessons {

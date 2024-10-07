@@ -89,6 +89,12 @@ impl LessonWidget {
         match event {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 match key_event.code {
+                    KeyCode::Esc => {
+                        self.ptr = 0;
+                        text_box.reset();
+
+                        EventResult::SetSubState(SubState::None)
+                    }
                     KeyCode::Enter => {
                         // Append the lesson to the database if the pointer is at the end
                         if self.ptr == 4 {
