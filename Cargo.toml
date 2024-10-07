@@ -1,10 +1,13 @@
 [package]
 name = "tipp10w"
-version = "0.1.0"
+version = "2.0.0"
 edition = "2021"
 
 [dependencies]
 chrono = "0.4.38"
+env_logger = "0.11.5"
+log = "0.4.22"
+ratatui = "0.28.1"
 rusqlite = { version = "0.32.1", features = ["bundled"] }
 
 # Enable a large amount of optimization in the dev profile for dependencies.
