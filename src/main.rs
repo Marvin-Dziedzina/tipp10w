@@ -1,4 +1,5 @@
 use std::{
+    env,
     fs::File,
     io::{self, Write},
 };
@@ -12,7 +13,6 @@ pub mod ui;
 pub mod widgets;
 
 use env_logger::Builder;
-use log::info;
 use tipp10w::Tipp10W;
 
 /// Enables bracketed paste mode in the terminal.
@@ -29,7 +29,6 @@ fn disable_bracketed_paste() {
 }
 
 /// Initializes the logger for the application.
-#[cfg(debug_assertions)]
 fn init_logger() {
     use log::warn;
 
@@ -46,16 +45,17 @@ fn init_logger() {
 }
 
 fn main() -> io::Result<()> {
-    // Check if the application is running in debug mode
-    #[cfg(debug_assertions)]
-    {
-        init_logger();
-        info!("Debug mode enabled");
-    }
-
-    // Check if the application is running in release mode
-    #[cfg(not(debug_assertions))]
-    {
+    let args = env::args().collect::<Vec<String>>();
+    if !args.is_empty() {
+        for (_, a) in args.iter().enumerate() {
+            match a.as_str() {
+                "-d" | "--debug" => {
+                    init_logger();
+                }
+                _ => {}
+            }
+        }
+    } else {
         env_logger::init();
     }
 
