@@ -1,4 +1,4 @@
-use log::warn;
+use log::{trace, warn};
 
 /// Enum to represent the different lessons in Tipp10
 #[derive(Debug, Clone, PartialEq)]
@@ -27,6 +27,7 @@ pub enum LessonSelection {
 impl LessonSelection {
     /// Get the lesson ID from the lesson number
     pub fn from_lesson_id(n: u8) -> Self {
+        trace!("Getting lesson from ID: {}", n);
         match n {
             1 => LessonSelection::L1,
             2 => LessonSelection::L2,
@@ -140,5 +141,57 @@ impl LessonSelection {
     /// Get the user lesson ID from the Lesson
     pub fn get_user_lesson(&self) -> u8 {
         self.get_lesson_id() + 100
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_lesson_id() {
+        assert_eq!(LessonSelection::from_lesson_id(1), LessonSelection::L1);
+        assert_eq!(LessonSelection::from_lesson_id(20), LessonSelection::L20);
+        assert_eq!(LessonSelection::from_lesson_id(0), LessonSelection::L1); // Default case
+    }
+
+    #[test]
+    fn test_from_lesson_name() {
+        assert_eq!(
+            LessonSelection::from_lesson_name("Lesson 1 (asdf jkl;)"),
+            LessonSelection::L1
+        );
+        assert_eq!(
+            LessonSelection::from_lesson_name("Lesson 20 (Numpad 2)"),
+            LessonSelection::L20
+        );
+        assert_eq!(
+            LessonSelection::from_lesson_name("Unknown Lesson"),
+            LessonSelection::L1
+        ); // Default case
+    }
+
+    #[test]
+    fn test_get_lesson_name() {
+        assert_eq!(
+            LessonSelection::L1.get_lesson_name(),
+            "Lesson 1 (asdf jkl;)".to_string()
+        );
+        assert_eq!(
+            LessonSelection::L20.get_lesson_name(),
+            "Lesson 20 (Numpad 2)".to_string()
+        );
+    }
+
+    #[test]
+    fn test_get_lesson_id() {
+        assert_eq!(LessonSelection::L1.get_lesson_id(), 1);
+        assert_eq!(LessonSelection::L20.get_lesson_id(), 20);
+    }
+
+    #[test]
+    fn test_get_user_lesson() {
+        assert_eq!(LessonSelection::L1.get_user_lesson(), 101);
+        assert_eq!(LessonSelection::L20.get_user_lesson(), 120);
     }
 }

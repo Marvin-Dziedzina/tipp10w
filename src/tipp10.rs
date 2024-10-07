@@ -6,7 +6,7 @@ use std::fmt::Display;
 use chrono::{offset::LocalResult, DateTime, Local, NaiveDateTime, TimeZone};
 pub use lesson::Lesson;
 pub use lesson_selection::LessonSelection;
-use log::{error, info, warn};
+use log::{error, info, trace, warn};
 use rusqlite::{params, Connection, OptionalExtension};
 
 /// Get all saved lessons.
@@ -21,6 +21,7 @@ pub fn get_lessons(conn: &Connection) -> Result<Vec<Lesson>, rusqlite::Error> {
                     return Err(e);
                 }
             };
+    trace!("Getting all lessons from database!");
 
     let lessons_iter = match stmt.query_map(params![], |row| {
         Ok(Lesson::new(
@@ -41,10 +42,16 @@ pub fn get_lessons(conn: &Connection) -> Result<Vec<Lesson>, rusqlite::Error> {
         }
     };
 
+    trace!("Got lesson iterator!");
+
+    trace!("Iterating over lessons!");
     let mut lessons = Vec::new();
     for lesson in lessons_iter {
         match lesson {
-            Ok(lesson) => lessons.push(lesson),
+            Ok(lesson) => {
+                trace!("Lesson: {:?}", lesson);
+                lessons.push(lesson)
+            }
             Err(e) => {
                 warn!("Could not get all lessons! Error: {}", e);
                 continue;
@@ -52,6 +59,8 @@ pub fn get_lessons(conn: &Connection) -> Result<Vec<Lesson>, rusqlite::Error> {
         }
     }
 
+    info!("Got all lessons from database!");
+    trace!("Lessons: {:?}", lessons);
     Ok(lessons)
 }
 
@@ -68,9 +77,11 @@ pub fn append_lesson(
 
     match conn.execute(
         "INSERT INTO user_lesson_list (user_lesson_lesson, user_lesson_timelen, user_lesson_tokenlen, user_lesson_strokesnum, user_lesson_errornum, user_lesson_timestamp, user_lesson_type, user_lesson_name) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-        params![lesson.get_user_lesson(), timelen, strokes, strokes, errors, timestamp, 0, lesson.get_lesson_name()],
+        params![lesson.get_user_lesson(), timelen, strokes, strokes, errors, timestamp.to_string(), 0, lesson.get_lesson_name()],
     ) {
-        Ok(_) => (),
+        Ok(_) => {
+            trace!("Lesson appended to database!");
+        },
         Err(e) => {
             error!("Could not append lesson to database!");
             return Err(SQLiteError::RusqliteError(e));
@@ -99,7 +110,7 @@ pub fn update_lesson(
         "UPDATE user_lesson_list SET user_lesson_lesson = ?1, user_lesson_timelen = ?2, user_lesson_tokenlen = ?3, user_lesson_strokesnum = ?4, user_lesson_errornum = ?5, user_lesson_timestamp = ?6, user_lesson_type = ?7, user_lesson_name = ?8 WHERE user_lesson_id = ?9",
         params![lesson.get_user_lesson(), timelen, strokes, strokes, errors, timestamp, 0, lesson.get_lesson_name(), id],
     ) {
-        Ok(_) => (),
+        Ok(_) => {trace!("Lesson updated in database!");},
         Err(e) => {
             error!("Could not update lesson in database!");
             return Err(SQLiteError::RusqliteError(e));
@@ -135,10 +146,11 @@ pub fn get_last_lesson_id(conn: &Connection) -> Result<usize, SQLiteError> {
     let mut stmt = match conn.prepare("SELECT MAX(user_lesson_id) FROM user_lesson_list") {
         Ok(stmt) => stmt,
         Err(e) => {
-            error!("Could not prepair sql query for deletion!");
+            error!("Could not prepair sql query for getting the last id!");
             return Err(SQLiteError::RusqliteError(e));
         }
     };
+    trace!("Prepared sql query for getting the last id!");
     let last_lesson_id_result = match stmt.query_row(params![], |row| row.get(0)).optional() {
         Ok(last_lesson_id_result) => last_lesson_id_result,
         Err(e) => {
@@ -148,8 +160,14 @@ pub fn get_last_lesson_id(conn: &Connection) -> Result<usize, SQLiteError> {
     };
 
     match last_lesson_id_result {
-        Some(last_lesson_id) => Ok(last_lesson_id),
-        None => Err(SQLiteError::NoLessons("No lessons found!".to_string())),
+        Some(last_lesson_id) => {
+            info!("Got last lesson id: {}", last_lesson_id);
+            Ok(last_lesson_id)
+        }
+        None => {
+            error!("Could not find any lessons!");
+            Err(SQLiteError::NoLessons("No lessons found!".to_string()))
+        }
     }
 }
 
@@ -207,16 +225,125 @@ pub fn reset_ids(conn: &Connection) -> Result<(), SQLiteError> {
         params![],
     )
     .map_err(SQLiteError::RusqliteError)?;
+    trace!("Temporary table for reset ids created!");
     conn.execute("DELETE FROM user_lesson_list", params![])
         .map_err(SQLiteError::RusqliteError)?;
-
     let mut stmt = conn.prepare("INSERT INTO user_lesson_list (user_lesson_id, user_lesson_lesson, user_lesson_timelen, user_lesson_tokenlen, user_lesson_strokesnum, user_lesson_errornum, user_lesson_timestamp, user_lesson_type, user_lesson_name) SELECT row_number() OVER (ORDER BY user_lesson_id) - 1, user_lesson_lesson, user_lesson_timelen, user_lesson_tokenlen, user_lesson_strokesnum, user_lesson_errornum, user_lesson_timestamp, user_lesson_type, user_lesson_name FROM temp_table").map_err(SQLiteError::RusqliteError)?;
     stmt.execute(params![])
         .map_err(SQLiteError::RusqliteError)?;
+    trace!("IDs resetted!");
 
     conn.execute("DROP TABLE temp_table", params![])
         .map_err(SQLiteError::RusqliteError)?;
+    trace!("Temporary table dropped!");
 
     info!("IDs reset completed!");
     Ok(())
+}
+#[cfg(test)]
+mod tests {
+    use crate::init_logger;
+
+    use super::*;
+
+    fn setup_test_db() -> Connection {
+        init_logger();
+
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute(
+            "CREATE TABLE user_lesson_list (
+                user_lesson_id INTEGER PRIMARY KEY,
+                user_lesson_lesson TEXT NOT NULL,
+                user_lesson_timelen INTEGER NOT NULL,
+                user_lesson_tokenlen INTEGER NOT NULL,
+                user_lesson_strokesnum INTEGER NOT NULL,
+                user_lesson_errornum INTEGER NOT NULL,
+                user_lesson_timestamp TEXT NOT NULL,
+                user_lesson_type INTEGER NOT NULL,
+                user_lesson_name TEXT NOT NULL
+            )",
+            params![],
+        )
+        .unwrap();
+
+        trace!("Test Database setup completed!");
+
+        conn
+    }
+
+    #[test]
+    fn test_append_lesson() {
+        let conn = setup_test_db();
+        let result = append_lesson(&conn, 1, 100, 10, 60, 20230101120000);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_get_lessons() {
+        let conn = setup_test_db();
+        append_lesson(&conn, 1, 100, 10, 60, 20230101120000).unwrap();
+        let lessons = get_lessons(&conn).unwrap();
+        info!("{:?}", lessons);
+        assert_eq!(lessons.len(), 1);
+    }
+
+    #[test]
+    fn test_update_lesson() {
+        let conn = setup_test_db();
+        append_lesson(&conn, 1, 100, 10, 60, 20230101120000).unwrap();
+        let result = update_lesson(
+            &conn,
+            get_last_lesson_id(&conn).unwrap(),
+            1,
+            200,
+            10,
+            60,
+            20230101120000,
+        );
+        assert!(result.is_ok());
+        let lessons = get_lessons(&conn).unwrap();
+        assert_eq!(lessons[0].strokes, 200);
+    }
+
+    #[test]
+    fn test_delete_lesson() {
+        let conn = setup_test_db();
+        append_lesson(&conn, 1, 100, 10, 60, 20230101120000).unwrap();
+        let result = delete_lesson(&conn, 0);
+        assert!(result.is_ok());
+        let lessons = get_lessons(&conn).unwrap();
+        assert!(lessons.is_empty());
+    }
+
+    #[test]
+    fn test_get_last_lesson_id() {
+        let conn = setup_test_db();
+        append_lesson(&conn, 1, 100, 10, 60, 20230101120000).unwrap();
+        let last_id = get_last_lesson_id(&conn).unwrap();
+        assert_eq!(last_id, 0);
+    }
+
+    #[test]
+    fn test_reset_ids() {
+        let conn = setup_test_db();
+        append_lesson(&conn, 1, 100, 10, 60, 20230101120000).unwrap();
+        append_lesson(&conn, 2, 200, 20, 120, 20230101130000).unwrap();
+        reset_ids(&conn).unwrap();
+        let lessons = get_lessons(&conn).unwrap();
+        assert_eq!(lessons[0].id, 0);
+        assert_eq!(lessons[1].id, 1);
+    }
+
+    #[test]
+    fn test_get_timestamp() {
+        let timestamp = get_timestamp();
+        assert!(timestamp > 0);
+    }
+
+    #[test]
+    fn test_get_datetime_tipp10_format_from_str() {
+        let datetime_str = "20230101120000";
+        let timestamp = get_datetime_tipp10_format_from_str(datetime_str).unwrap();
+        assert_eq!(timestamp, 20230101120000);
+    }
 }

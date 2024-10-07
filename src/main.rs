@@ -1,4 +1,7 @@
-use std::io::{self, Write};
+use std::{
+    fs::File,
+    io::{self, Write},
+};
 
 // Module declarations
 pub mod events;
@@ -8,6 +11,8 @@ mod tipp10w;
 pub mod ui;
 pub mod widgets;
 
+use env_logger::Builder;
+use log::info;
 use tipp10w::Tipp10W;
 
 /// Enables bracketed paste mode in the terminal.
@@ -23,8 +28,36 @@ fn disable_bracketed_paste() {
     io::stdout().flush().unwrap();
 }
 
+/// Initializes the logger for the application.
+#[cfg(debug_assertions)]
+fn init_logger() {
+    use log::warn;
+
+    let log_file = File::create("log").unwrap();
+    match Builder::new()
+        .format(|buf, record| writeln!(buf, "{}: {}", record.level(), record.args()))
+        .target(env_logger::Target::Pipe(Box::new(log_file)))
+        .filter(None, log::LevelFilter::Trace)
+        .try_init()
+    {
+        Ok(_) => (),
+        Err(e) => warn!("env_logger was initialized bevore! Error: {}", e),
+    };
+}
+
 fn main() -> io::Result<()> {
-    env_logger::init();
+    // Check if the application is running in debug mode
+    #[cfg(debug_assertions)]
+    {
+        init_logger();
+        info!("Debug mode enabled");
+    }
+
+    // Check if the application is running in release mode
+    #[cfg(not(debug_assertions))]
+    {
+        env_logger::init();
+    }
 
     enable_bracketed_paste();
 

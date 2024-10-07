@@ -175,3 +175,98 @@ impl TextBox {
         self.buf.clear();
     }
 }
+#[cfg(test)]
+mod tests {
+    use ratatui::crossterm::event::{KeyEvent, KeyModifiers};
+
+    use super::*;
+
+    #[test]
+    fn test_new_text_box() {
+        let text_box = TextBox::new(Some(10));
+        assert_eq!(text_box.ptr, 0);
+        assert_eq!(text_box.buf, "");
+        assert_eq!(text_box.max_len, Some(10));
+    }
+
+    #[test]
+    fn test_with_preset() {
+        let text_box = TextBox::with_preset("hello", Some(10));
+        assert_eq!(text_box.ptr, 0);
+        assert_eq!(text_box.buf, "hello");
+        assert_eq!(text_box.max_len, Some(10));
+    }
+
+    #[test]
+    fn test_handle_events_left_key() {
+        let mut text_box = TextBox::with_preset("hello", None);
+        text_box.set_ptr(3).unwrap();
+        let event = Event::Key(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
+        text_box.handle_events(&event).unwrap();
+        assert_eq!(text_box.ptr, 2);
+    }
+
+    #[test]
+    fn test_handle_events_right_key() {
+        let mut text_box = TextBox::with_preset("hello", None);
+        text_box.set_ptr(3).unwrap();
+        let event = Event::Key(KeyEvent::new(KeyCode::Right, KeyModifiers::NONE));
+        text_box.handle_events(&event).unwrap();
+        assert_eq!(text_box.ptr, 4);
+    }
+
+    #[test]
+    fn test_handle_events_backspace_key() {
+        let mut text_box = TextBox::with_preset("hello", None);
+        text_box.set_ptr(3).unwrap();
+        let event = Event::Key(KeyEvent::new(KeyCode::Backspace, KeyModifiers::NONE));
+        text_box.handle_events(&event).unwrap();
+        assert_eq!(text_box.buf, "helo");
+        assert_eq!(text_box.ptr, 2);
+    }
+
+    #[test]
+    fn test_handle_events_delete_key() {
+        let mut text_box = TextBox::with_preset("hello", None);
+        text_box.set_ptr(3).unwrap();
+        let event = Event::Key(KeyEvent::new(KeyCode::Delete, KeyModifiers::NONE));
+        text_box.handle_events(&event).unwrap();
+        assert_eq!(text_box.buf, "helo");
+        assert_eq!(text_box.ptr, 3);
+    }
+
+    #[test]
+    fn test_handle_events_char_key() {
+        let mut text_box = TextBox::with_preset("hello", None);
+        text_box.set_ptr(3).unwrap();
+        let event = Event::Key(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE));
+        text_box.handle_events(&event).unwrap();
+        assert_eq!(text_box.buf, "helxlo");
+        assert_eq!(text_box.ptr, 4);
+    }
+
+    #[test]
+    fn test_handle_events_paste() {
+        let mut text_box = TextBox::with_preset("hello", None);
+        text_box.set_ptr(3).unwrap();
+        let event = Event::Paste("world".to_string());
+        text_box.handle_events(&event).unwrap();
+        assert_eq!(text_box.buf, "helworldlo");
+        assert_eq!(text_box.ptr, 8);
+    }
+
+    #[test]
+    fn test_set_ptr_out_of_bounds() {
+        let mut text_box = TextBox::with_preset("hello", None);
+        let result = text_box.set_ptr(10);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_reset() {
+        let mut text_box = TextBox::with_preset("hello", None);
+        text_box.reset();
+        assert_eq!(text_box.ptr, 0);
+        assert_eq!(text_box.buf, "");
+    }
+}
