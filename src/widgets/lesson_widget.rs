@@ -68,15 +68,13 @@ impl LessonWidget {
             };
 
             Line::from_iter(lines).alignment(Alignment::Center)
+        } else if selected {
+            Line::from_iter(self.lesson.get_line())
+                .bg(Color::DarkGray)
+                .fg(Color::Black)
+                .alignment(Alignment::Center)
         } else {
-            if selected {
-                Line::from_iter(self.lesson.get_line())
-                    .bg(Color::DarkGray)
-                    .fg(Color::Black)
-                    .alignment(Alignment::Center)
-            } else {
-                Line::from_iter(self.lesson.get_line()).alignment(Alignment::Center)
-            }
+            Line::from_iter(self.lesson.get_line()).alignment(Alignment::Center)
         }
     }
 

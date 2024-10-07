@@ -68,12 +68,12 @@ impl Display for Lesson {
         write!(
             f,
             "[ ID: {} | Name: {} | Timestamp: {} | Duration: {} | Strokes: {} | Errors: {} ]",
-            format!("{:<4}", self.id),
-            format!("{:<29}", self.lesson_id.get_lesson_name()),
+            format_args!("{:<4}", self.id),
+            format_args!("{:<29}", self.lesson_id.get_lesson_name()),
             self.timestamp,
-            format!("{:<4}", self.duration),
-            format!("{:<6}", self.strokes),
-            format!("{:<6}", self.errors),
+            format_args!("{:<4}", self.duration),
+            format_args!("{:<6}", self.strokes),
+            format_args!("{:<6}", self.errors),
         )
     }
 }

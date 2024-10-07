@@ -20,6 +20,12 @@ pub struct LessonsWidget {
     pub ptr: usize,
     pub lessons: Vec<LessonWidget>,
 }
+impl Default for LessonsWidget {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LessonsWidget {
     pub fn new() -> Self {
         Self {
@@ -105,16 +111,22 @@ impl LessonsWidget {
                     }
                     KeyCode::Delete => {
                         // Check if there are any lessons
-                        if self.lessons.len() == 0 {
+                        if self.lessons.is_empty() {
                             return EventResult::None(ResultError::NoLessons);
                         };
 
                         // Delete the lesson from the database
-                        tipp10::delete_lesson(&conn, self.lessons[self.ptr].lesson.id).unwrap();
+                        match tipp10::delete_lesson(conn, self.lessons[self.ptr].lesson.id) {
+                            Ok(_) => (),
+                            Err(e) => {
+                                error!("Could not delete lesson from database! Error: {}", e);
+                                return EventResult::None(ResultError::SQLite);
+                            }
+                        };
 
-                        self.update_lessons(&conn);
+                        self.update_lessons(conn);
 
-                        if self.ptr >= self.lessons.len() && self.lessons.len() > 0 {
+                        if self.ptr >= self.lessons.len() && !self.lessons.is_empty() {
                             self.ptr = self.lessons.len() - 1;
                         };
 
@@ -155,18 +167,16 @@ impl LessonsWidget {
                     KeyCode::Esc => EventResult::Exit,
                     _ => EventResult::None(ResultError::None),
                 },
-                SubState::Edit(id) => match key_event.code {
-                    _ => {
-                        // Handle events for the lesson being edited
-                        for lesson in &mut self.lessons {
-                            if lesson.lesson.id == *id {
-                                return lesson.handle_events(event, conn, text_box);
-                            };
-                        }
-
-                        EventResult::SetSubState(SubState::None)
+                SubState::Edit(id) => {
+                    // Handle events for the lesson being edited
+                    for lesson in &mut self.lessons {
+                        if lesson.lesson.id == *id {
+                            return lesson.handle_events(event, conn, text_box);
+                        };
                     }
-                },
+
+                    EventResult::SetSubState(SubState::None)
+                }
             },
             _ => EventResult::None(ResultError::None),
         }
@@ -174,7 +184,7 @@ impl LessonsWidget {
 
     /// Get the lessons from the database and return them as a vector of LessonWidget
     fn get_lessons(&mut self, conn: &Connection) -> Vec<LessonWidget> {
-        let lessons_save_data = tipp10::get_lessons(conn).unwrap();
+        let lessons_save_data = tipp10::get_lessons(conn).expect("Could not get lessons!");
         lessons_save_data
             .iter()
             .map(|lesson| LessonWidget::new(lesson.clone()))

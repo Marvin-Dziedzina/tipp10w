@@ -21,22 +21,16 @@ impl Tipp10W {
     ) -> io::Result<EventResult> {
         // Read the next event from the terminal
         let event = event::read()?;
-        match event {
-            Event::Resize(width, height) => {
-                // Update the terminal size
-                f.resize(Rect::new(0, 0, width, height))?;
-            }
-            _ => (),
+        if let Event::Resize(width, height) = event {
+            // Update the terminal size
+            f.resize(Rect::new(0, 0, width, height))?;
         }
 
         let result: EventResult = match &mut self.app_state.state {
             State::Setup => {
                 match event {
                     Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                        match key_event.code {
-                            KeyCode::Esc => return Ok(EventResult::Exit),
-                            _ => (),
-                        }
+                        if key_event.code == KeyCode::Esc { return Ok(EventResult::Exit) }
                     }
                     _ => (),
                 };

@@ -26,7 +26,9 @@ pub fn get_lessons(conn: &Connection) -> Result<Vec<Lesson>, rusqlite::Error> {
         Ok(Lesson::new(
             row.get(0)?,
             LessonSelection::from_lesson_name(&row.get::<_, String>(1)?),
-            row.get::<_, String>(2)?.parse::<u64>().unwrap(),
+            row.get::<_, String>(2)?
+                .parse::<u64>()
+                .expect("Should not happen!"),
             row.get(3)?,
             row.get(4)?,
             row.get(5)?,
@@ -78,7 +80,7 @@ pub fn append_lesson(
     reset_ids(conn)?;
 
     info!("Insertion completed!");
-    Ok(get_last_lesson_id(conn)?)
+    get_last_lesson_id(conn)
 }
 
 /// Update a lesson in the table.
@@ -204,16 +206,16 @@ pub fn reset_ids(conn: &Connection) -> Result<(), SQLiteError> {
         "CREATE TEMPORARY TABLE temp_table AS SELECT * FROM user_lesson_list",
         params![],
     )
-    .map_err(|e| SQLiteError::RusqliteError(e))?;
+    .map_err(SQLiteError::RusqliteError)?;
     conn.execute("DELETE FROM user_lesson_list", params![])
-        .map_err(|e| SQLiteError::RusqliteError(e))?;
+        .map_err(SQLiteError::RusqliteError)?;
 
-    let mut stmt = conn.prepare("INSERT INTO user_lesson_list (user_lesson_id, user_lesson_lesson, user_lesson_timelen, user_lesson_tokenlen, user_lesson_strokesnum, user_lesson_errornum, user_lesson_timestamp, user_lesson_type, user_lesson_name) SELECT row_number() OVER (ORDER BY user_lesson_id) - 1, user_lesson_lesson, user_lesson_timelen, user_lesson_tokenlen, user_lesson_strokesnum, user_lesson_errornum, user_lesson_timestamp, user_lesson_type, user_lesson_name FROM temp_table").map_err(|e| SQLiteError::RusqliteError(e))?;
+    let mut stmt = conn.prepare("INSERT INTO user_lesson_list (user_lesson_id, user_lesson_lesson, user_lesson_timelen, user_lesson_tokenlen, user_lesson_strokesnum, user_lesson_errornum, user_lesson_timestamp, user_lesson_type, user_lesson_name) SELECT row_number() OVER (ORDER BY user_lesson_id) - 1, user_lesson_lesson, user_lesson_timelen, user_lesson_tokenlen, user_lesson_strokesnum, user_lesson_errornum, user_lesson_timestamp, user_lesson_type, user_lesson_name FROM temp_table").map_err(SQLiteError::RusqliteError)?;
     stmt.execute(params![])
-        .map_err(|e| SQLiteError::RusqliteError(e))?;
+        .map_err(SQLiteError::RusqliteError)?;
 
     conn.execute("DROP TABLE temp_table", params![])
-        .map_err(|e| SQLiteError::RusqliteError(e))?;
+        .map_err(SQLiteError::RusqliteError)?;
 
     info!("IDs reset completed!");
     Ok(())

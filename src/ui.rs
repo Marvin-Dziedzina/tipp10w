@@ -47,7 +47,7 @@ impl Tipp10W {
                 );
             }
             State::Menu(sub_state) => {
-                if let Some(_) = &self.conn {
+                if self.conn.is_some() {
                     // Create a vertical layout with 2 chunks
                     let chunks_vertical = Layout::default()
                         .direction(Direction::Vertical)

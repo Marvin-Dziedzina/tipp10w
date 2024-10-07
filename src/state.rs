@@ -11,6 +11,12 @@ pub struct AppState {
     pub error: String,                 // String to store error messages
 }
 
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AppState {
     /// Creates a new instance of AppState with default values
     pub fn new() -> Self {
