@@ -159,7 +159,9 @@ impl LessonWidget {
                                             tipp10::get_timestamp()
                                         } else {
                                             let timestamp =
-                                                match text_box.get_buffer_ref().parse::<u64>() {
+                                                match tipp10::get_datetime_tipp10_format_from_str(
+                                                    text_box.get_buffer_ref(),
+                                                ) {
                                                     Ok(timestamp) => timestamp,
                                                     Err(_) => {
                                                         return EventResult::None(
