@@ -61,7 +61,7 @@ fi
 
 # Create the tarball
 echo "Creating tarball..."
-if ! sudo tar -czf tipp10w_arch_linux_x64.tar.gz -C target/x86_64-unknown-linux-gnu/release tipp10w
+if ! sudo tar -czf tipp10w_linux_x86-x64.tar.gz -C target/x86_64-unknown-linux-gnu/release tipp10w
 then
     echo "Tar compression failed!"
     exit 1
