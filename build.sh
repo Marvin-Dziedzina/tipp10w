@@ -72,7 +72,7 @@ fi
 
 # Create the zip file
 echo "Creating zip file..."
-if ! sudo zip -j tipp10w_windows_x86-64.zip target/x86_64-pc-windows-gnu/release/tipp10w.exe
+if ! sudo zip -jq tipp10w_windows_x86-64.zip target/x86_64-pc-windows-gnu/release/tipp10w.exe
 then
     echo "Zip compression failed!"
     exit 1
