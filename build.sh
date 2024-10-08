@@ -61,7 +61,7 @@ fi
 
 # Create the tarball
 echo "Creating tarball..."
-if ! sudo tar -cf tipp10w_arch_linux_x64.tar.gz target/x86_64-unknown-linux-gnu/release/tipp10w
+if ! sudo tar -czf tipp10w_arch_linux_x64.tar.gz -C target/x86_64-unknown-linux-gnu/release tipp10w
 then
     echo "Tar compression failed!"
     exit 1
@@ -72,7 +72,7 @@ fi
 
 # Create the zip file
 echo "Creating zip file..."
-if ! sudo zip -rq tipp10w_windows_x86-64.zip target/x86_64-pc-windows-gnu/release/tipp10w.exe
+if ! sudo zip -j tipp10w_windows_x86-64.zip target/x86_64-pc-windows-gnu/release/tipp10w.exe
 then
     echo "Zip compression failed!"
     exit 1
